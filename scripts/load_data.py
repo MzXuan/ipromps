@@ -21,7 +21,7 @@ datasets_path = os.path.join(file_path, cp_models.get('datasets', 'path'))
 len_norm = cp_models.getint('datasets', 'len_norm')
 num_demo = cp_models.getint('datasets', 'num_demo')
 num_joints = cp_models.getint('datasets', 'num_joints')
-sigma = cp_models.get('filter', 'sigma')
+sigma = cp_models.getfloat('filter', 'sigma')
 
 # read datasets cfg file
 cp_datasets = ConfigParser.SafeConfigParser()
@@ -44,6 +44,7 @@ def main():
         demo_path_list = glob.glob(os.path.join(task_csv_path, '201*'))   # the prefix of dataset file
         demo_temp = []
         for demo_path in demo_path_list:
+
             data_csv = pd.read_csv(os.path.join(demo_path, 'multiModal_states.csv'))    # the file name of csv
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
@@ -62,6 +63,7 @@ def main():
         demo_norm_temp = []
         for demo_data in task_data:
             time_stamp = demo_data['stamp']
+            # print ("left_hand in demo_data: ", demo_data['left_hand'])
             # filter the datasets
             left_hand_filtered = gaussian_filter1d(demo_data['left_hand'].T, sigma=sigma).T
             left_joints_filtered = gaussian_filter1d(demo_data['left_joints'].T, sigma=sigma).T
