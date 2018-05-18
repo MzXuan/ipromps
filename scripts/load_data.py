@@ -56,7 +56,51 @@ def main():
                               })
         datasets_raw.append(demo_temp)
 
+    # # new vision; remove filter
+    # # filter the datasets: gaussian_filter1d
+    # datasets_filtered = []
+    # for task_idx, task_data in enumerate(datasets_raw):
+    #     print('Filtering data of task: ' + task_name_list[task_idx])
+    #     demo_norm_temp = []
+    #     for demo_data in task_data:
+    #         time_stamp = demo_data['stamp']
+    #         # left_hand_filtered = gaussian_filter1d(demo_data['left_hand'].T, sigma=sigma).T
+    #         # left_joints_filtered = gaussian_filter1d(demo_data['left_joints'].T, sigma=sigma).T
+    #         # append them to list
+    #         demo_norm_temp.append({
+    #             'alpha': time_stamp[-1],
+    #             'left_hand': demo_data['left_hand'],
+    #             'left_joints': demo_data['left_joints']
+    #         })  # .T means transpose array
+    #     datasets_filtered.append(demo_norm_temp)
+    #
+    # # resample the datasets
+    # datasets_norm = []
+    # for task_idx, task_data in enumerate(datasets_raw):
+    #     print('Resampling data of task: ' + task_name_list[task_idx])
+    #     demo_norm_temp = []
+    #     for demo_data in task_data:
+    #         time_stamp = demo_data['stamp']
+    #         grid = np.linspace(0, time_stamp[-1], len_norm)
+    #         # filter the datasets
+    #         # left_hand_filtered = gaussian_filter1d(demo_data['left_hand'].T, sigma=sigma).T
+    #         # left_joints_filtered = gaussian_filter1d(demo_data['left_joints'].T, sigma=sigma).T
+    #         left_hand_filtered = demo_data['left_hand']
+    #         left_joints_filtered = demo_data['left_joints']
+    #         # normalize the datasets
+    #         left_hand_norm = griddata(time_stamp, left_hand_filtered, grid, method='linear')
+    #         left_joints_norm = griddata(time_stamp, left_joints_filtered, grid, method='linear')
+    #         # append them to list
+    #         demo_norm_temp.append({
+    #                                 'alpha': time_stamp[-1],
+    #                                 'left_hand': left_hand_norm,
+    #                                 'left_joints': left_joints_norm
+    #                                 })
+    #     datasets_norm.append(demo_norm_temp)
+
+    # old version
     # filter the datasets: gaussian_filter1d
+    # denoise, for debug, does not really helpful
     datasets_filtered = []
     for task_idx, task_data in enumerate(datasets_raw):
         print('Filtering data of task: ' + task_name_list[task_idx])
@@ -73,6 +117,7 @@ def main():
                 'left_hand': left_hand_filtered,
                 'left_joints': left_joints_filtered
             })
+        # print ("demo_norm_temp: ", demo_norm_temp)
         datasets_filtered.append(demo_norm_temp)
 
     # resample the datasets
@@ -98,6 +143,7 @@ def main():
         datasets_norm.append(demo_norm_temp)
 
     # preprocessing for the norm data
+
     datasets4train = []
     for task_idx, demo_list in enumerate(data_index):
         data = [datasets_norm[task_idx][i] for i in demo_list]

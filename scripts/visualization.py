@@ -341,8 +341,8 @@ def plot_online_3d_obs(num):
 def pairs_offline(num=0):
     plot_3d_filtered_h_traj(num)
     plot_3d_filtered_r_traj(num)
-    plot_offline_3d_obs(num)
-    plot_gen_3d_offline_r_traj(num)
+    plot_offline_3d_obs(num) # observations
+    plot_gen_3d_offline_r_traj(num) # predictions
 
 
 # plot online test pair
