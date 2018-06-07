@@ -21,7 +21,7 @@ datasets_path = os.path.join(file_path, cp_models.get('datasets', 'path'))
 len_norm = cp_models.getint('datasets', 'len_norm')
 num_demo = cp_models.getint('datasets', 'num_demo')
 num_joints = cp_models.getint('datasets', 'num_joints')
-sigma = cp_models.get('filter', 'sigma')
+sigma = cp_models.getint('filter', 'sigma')
 
 # read datasets cfg file
 cp_datasets = ConfigParser.SafeConfigParser()
@@ -49,9 +49,9 @@ def main():
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
                                   data_csv.values[:, 207:210].astype(float),   # human left hand position
-                                  data_csv.values[:, 7:15].astype(float),  # emg
+                                #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
-                              'left_joints': data_csv.values[:, 317:324].astype(float)  # robot ee actually
+                              'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
                               })
         datasets_raw.append(demo_temp)
 
@@ -116,8 +116,8 @@ def main():
             temp = datasets_norm_full[(task_idx * num_demo + demo_idx) * len_norm:
             (task_idx * num_demo + demo_idx) * len_norm + len_norm, :]
             datasets_temp.append({
-                                    'left_hand': temp[:, 0:11],
-                                    'left_joints': temp[:, 11:18],
+                                    'left_hand': temp[:, 0:3],
+                                    'left_joints': temp[:, 3:6],
                                     'alpha': datasets4train[task_idx][demo_idx]['alpha']})
         datasets_norm_preproc.append(datasets_temp)
 

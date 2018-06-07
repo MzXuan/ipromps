@@ -31,7 +31,7 @@ task_name = joblib.load(os.path.join(datasets_path, 'pkl/task_name_list.pkl'))
 cp_datasets = ConfigParser.SafeConfigParser()
 cp_datasets.read(os.path.join(datasets_path, 'info/cfg/datasets.cfg'))
 # read datasets params
-data_index_sec = cp_datasets.items('index_15')
+data_index_sec = cp_datasets.items('index_17')
 data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 
 # the idx of interest info in data structure

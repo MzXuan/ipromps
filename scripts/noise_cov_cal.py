@@ -28,12 +28,12 @@ def main():
     # # left_joints = data.values[:, 99:106].astype(float)
 
     # extract the all signals data ORIENTATION
-    emg = data.values[:, 7:15].astype(float)
+    # emg = data.values[:, 7:15].astype(float)
     left_hand = data.values[:, 207:210].astype(float)
-    left_joints = data.values[:, 317:324].astype(float)  # robot ee actually
+    left_joints = data.values[:, 317:320].astype(float)  # robot ee actually
 
     # stack them as a big matrix
-    full_data = np.hstack([left_hand, emg, left_joints])[1200:, :]
+    full_data = np.hstack([left_hand, left_joints])[1200:, :]
     full_data = min_max_scaler.transform(full_data)
 
     # compute the noise observation covariance matrix
