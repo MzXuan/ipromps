@@ -29,15 +29,15 @@ for idx_demo in range(num_demo):
     promp.add_demonstration(datasets_norm_preproc[0][idx_demo]['left_joints'][:,1])
 promp.plot_prior(b_regression=False, linewidth_mean=5, b_dataset=False)
 
-promp.add_viapoint(0.1, datasets_norm_preproc[0][test_idx]['left_joints'][10,0])
-# promp.add_viapoint(0.2, datasets_norm_preproc[0][test_idx]['left_joints'][20,0])
-promp.add_viapoint(0.3, datasets_norm_preproc[0][test_idx]['left_joints'][30,0])
+promp.add_viapoint(0.1, datasets_norm_preproc[0][test_idx]['left_joints'][0,0])
+promp.add_viapoint(0.2, datasets_norm_preproc[0][test_idx]['left_joints'][0,1])
+# promp.add_viapoint(0.3, datasets_norm_preproc[0][test_idx]['left_joints'][30,0])
 # promp.add_viapoint(0.4, datasets_norm_preproc[0][test_idx]['left_joints'][40,0])
-promp.add_viapoint(0.5, datasets_norm_preproc[0][test_idx]['left_joints'][50,0])
+# promp.add_viapoint(0.5, datasets_norm_preproc[0][test_idx]['left_joints'][50,0])
 # promp.add_viapoint(1.0, datasets_norm_preproc[0][test_idx]['left_joints'][100,0])
 promp.param_updata()
-# promp.plot_uUpdated(legend='Inferred trajectory')
-# promp.plot_uViapoints()
+promp.plot_uUpdated(legend='Inferred trajectory')
+promp.plot_uViapoints()
 
 # plt.plot(promp.x, datasets_norm_preproc[0][test_idx]['left_joints'][:,0], color='g', linewidth=5, label='ground truth')
 

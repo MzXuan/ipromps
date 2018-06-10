@@ -48,10 +48,10 @@ def main():
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
-                                  data_csv.values[:, 207:210].astype(float),   # human left hand position
+                                  data_csv.values[:, 207].astype(float),   # human left hand position
                                 #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
-                              'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
+                              'left_joints': data_csv.values[:, 317].astype(float)  # robot ee actually
                               })
         datasets_raw.append(demo_temp)
 
@@ -104,7 +104,7 @@ def main():
     for task_idx, task_data in enumerate(datasets4train):
         print('Preprocessing data for task: ' + task_name_list[task_idx])
         for demo_data in task_data:
-            h = np.hstack([demo_data['left_hand'], demo_data['left_joints']])
+            h = np.hstack([demo_data['left_hand'].reshape(len(demo_data['left_hand']),1), demo_data['left_joints'].reshape(len(demo_data['left_joints']),1)])
             y_full = np.vstack([y_full, h])
     min_max_scaler = preprocessing.MinMaxScaler()
     datasets_norm_full = min_max_scaler.fit_transform(y_full)
@@ -116,8 +116,8 @@ def main():
             temp = datasets_norm_full[(task_idx * num_demo + demo_idx) * len_norm:
             (task_idx * num_demo + demo_idx) * len_norm + len_norm, :]
             datasets_temp.append({
-                                    'left_hand': temp[:, 0:3],
-                                    'left_joints': temp[:, 3:6],
+                                    'left_hand': temp[:, 0],
+                                    'left_joints': temp[:, 1],
                                     'alpha': datasets4train[task_idx][demo_idx]['alpha']})
         datasets_norm_preproc.append(datasets_temp)
 

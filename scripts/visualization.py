@@ -20,7 +20,7 @@ datasets_path = os.path.join(file_path, cp_models.get('datasets', 'path'))
 
 # load datasets
 ipromps_set = joblib.load(os.path.join(datasets_path, 'pkl/ipromps_set.pkl'))
-# ipromps_set_post = joblib.load(os.path.join(datasets_path, 'pkl/ipromps_set_post.pkl'))
+ipromps_set_post = joblib.load(os.path.join(datasets_path, 'pkl/ipromps_set_post.pkl'))
 datasets_raw = joblib.load(os.path.join(datasets_path, 'pkl/datasets_raw.pkl'))
 datasets_norm = joblib.load(os.path.join(datasets_path, 'pkl/datasets_norm.pkl'))
 datasets_filtered = joblib.load(os.path.join(datasets_path, 'pkl/datasets_filtered.pkl'))
@@ -44,12 +44,12 @@ data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 #             'left_joints': [11, 14]
 #             }
 info_n_idx = {
-            'left_hand': [0, 11],
-            'left_joints': [11, 18]
+            'left_hand': [0],
+            'left_joints': [1, 4]
             }
 # the info to be plotted
 info = cp_models.get('visualization', 'info')
-joint_num = info_n_idx[info][1] - info_n_idx[info][0]
+joint_num = 1
 
 
 # # zh config
@@ -65,12 +65,9 @@ def plot_raw_data(num=0):
         fig = plt.figure(task_idx + num)
         fig.suptitle('the raw data of ' + info)
         for demo_idx in range(ipromps_idx.num_demos):
-            for joint_idx in range(joint_num):
-                ax = fig.add_subplot(joint_num, 1, 1 + joint_idx)
-                data = datasets_raw[task_idx][demo_idx][info][:, joint_idx]
-                plt.plot(np.array(range(len(data)))/100.0, data)
-                ax.set_xlabel('t(s)')
-                ax.set_ylabel('y(m)')
+            # ax = fig.add_subplot(joint_num)
+            data = datasets_raw[task_idx][demo_idx][info]
+            plt.plot(np.array(range(len(data)))/100.0, data)
 
 # plot the norm data
 def plot_norm_data(num=0):
@@ -118,9 +115,7 @@ def plot_prior(num=0):
     for task_idx, ipromps_idx in enumerate(ipromps_set):
         fig = plt.figure(task_idx+num)
         fig.suptitle('the prior of ' + info + ' for ' + task_name[task_idx] + ' model')
-        for joint_idx in range(joint_num):
-            ax = fig.add_subplot(joint_num, 1, 1+joint_idx)
-            ipromps_idx.promps[joint_idx + info_n_idx[info][0]].plot_prior(b_regression=True)
+        ipromps_idx.promps[info_n_idx[info][0]].plot_prior(b_regression=True)
 
 
 # plot alpha distribute
@@ -240,16 +235,16 @@ def plot_3d_raw_traj(num=0):
 def plot_3d_filtered_h_traj(num=0):
     for task_idx, demo_list in enumerate(data_index):
         fig = plt.figure(task_idx+num)
-        ax = fig.gca(projection='3d')
+        # ax = fig.gca(projection='3d')
         for demo_idx in demo_list:
             data = datasets_filtered[task_idx][demo_idx]['left_hand']
-            ax.plot(data[:, 0], data[:, 1], data[:, 2], linewidth=2,
+            plt.plot(data)
                     # label='training sets about human '+str(demo_idx), alpha=0.3)
-                    alpha=0.8)
-            ax.set_xlabel('X (m)')
-            ax.set_ylabel('Y (m)')
-            ax.set_zlabel('Z (m)')
-            ax.legend()
+                    
+            # ax.set_xlabel('X (m)')
+            # ax.set_ylabel('Y (m)')
+            # ax.set_zlabel('Z (m)')
+            # ax.legend()
 
 
 # plot the offline obs
@@ -330,8 +325,8 @@ def plot_online_3d_obs(num):
         fig = plt.figure(task_idx + num)
         ax = fig.gca(projection='3d')
         data = obs_data_online
-        ax.plot(data[0:num_obs, 0], data[0:num_obs, 1], data[0:num_obs, 2],
-                'o', linewidth=3, label='obs points', alpha=0.2)
+        ax.plot(data[0:num_obs, 0],
+                'o', linewidth=2, label='obs points', alpha=0.2)
         ax.set_xlabel('X (m)')
         ax.set_ylabel('Y (m)')
         ax.set_zlabel('Z (m)')
@@ -408,7 +403,7 @@ def main():
     # plot_preproc_data(10)
     # plot_filtered_data(10)
     # plot_single_dim(0)
-    # plot_prior(0)
+    plot_prior(0)
     # plot_post()
     # plot_alpha()
     # plot_robot_traj()
@@ -420,7 +415,7 @@ def main():
     #3D
     # plot_3d_raw_traj(10)
     # plot_3d_gen_r_traj_online(10)
-    pairs_offline(0)
+    # pairs_offline(0)
     # pairs_online(10)
     # plt.legend(prop = {'size': 20})
     plt.show()

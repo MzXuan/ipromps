@@ -23,7 +23,7 @@ class ProMP(object):
         self.viapoints = []     # the via point list
         self.sigmay = sigmay    # the measurement noise cov mat for updated distribution
         self.W = np.array([])   # the weight for each demo
-        self.Y = np.empty((0, self.num_samples), float)     # the demon traj array
+        self.Y = np.empty((0, self.num_samples), float)     # the demo traj array
 
         # the unit promp prior W distribution
         self.meanW = None
@@ -189,12 +189,13 @@ class ProMP(object):
         :return:
         """
         x = self.x
+        # plt.figure(1)
         # the probability distribution
         if b_distribution:
             mean = np.dot(self.Phi.T, self.meanW)
             std = 2 * np.sqrt(np.diag(np.dot(self.Phi.T, np.dot(self.sigmaW, self.Phi))))
             plt.fill_between(x, mean-std, mean+std, color=color, alpha=alpha_std)
-            # plt.plot(x, mean, color=color, label=legend, linewidth=linewidth_mean)
+            plt.plot(x, mean, color=color, label=legend, linewidth=linewidth_mean)
         # the regression result
         if b_regression:
             for w in self.W:

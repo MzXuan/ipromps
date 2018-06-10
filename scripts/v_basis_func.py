@@ -20,7 +20,7 @@ datasets_norm_preproc = joblib.load(os.path.join(datasets_path, 'pkl/datasets_no
 
 num_basis = 12
 
-ex = datasets_norm_preproc[0][0]['left_joints'][:,1]
+ex = datasets_norm_preproc[0][0]['left_joints']
 
 x_grid = np.linspace(0, 1, len_norm)
 c_grid = np.arange(0,num_basis)/(num_basis-1.0)
