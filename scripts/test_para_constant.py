@@ -39,7 +39,12 @@ y_list = []
 def main():
     task_id = 0
     test_index = 20
-    obs_ratio = 0.2
+
+    obs_ratio_time_1 = np.array([0.,0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    obs_ratio_time_2 = np.array([0.,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
+    
+    obs_ratio_time = np.column_stack((obs_ratio_time_1,obs_ratio_time_2))
+
 
     # read test data
     obs_data_dict = datasets_raw[task_id][test_index]
@@ -54,62 +59,106 @@ def main():
     # consider the unobserved info
     obs_data_post_arr[:, num_obs_joints:] = 0.0
 
-    # choose the data
-    num_obs = int(len(timestamp)*obs_ratio)
-    num_obs -= num_obs % 15
-    obs_data_post_arr = obs_data_post_arr[0:num_obs:15, :]
-    timestamp = timestamp[0:num_obs:15]
-    obs_data_post_arr = obs_data_post_arr
-    timestamp = timestamp
+    for obs_ratio in obs_ratio_time:
+        obs_data_post_arr =obs_data_post_arr[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0]),:]
+        timestamp = timestamp[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0])]
+        # phase estimation
+        print('Phase estimating...')
+        alpha_max_list = []
+        for ipromp in ipromps_set:
+            alpha_temp = ipromp.alpha_candidate(num_alpha_candidate)
+            idx_max = ipromp.estimate_alpha(alpha_temp, obs_data_post_arr, timestamp)
+            alpha_max_list.append(alpha_temp[idx_max]['candidate'])
+            ipromp.set_alpha(alpha_temp[idx_max]['candidate'])
 
-    # phase estimation
-    print('Phase estimating...')
-    alpha_max_list = []
-    for ipromp in ipromps_set:
-        alpha_temp = ipromp.alpha_candidate(num_alpha_candidate)
-        idx_max = ipromp.estimate_alpha(alpha_temp, obs_data_post_arr, timestamp)
-        alpha_max_list.append(alpha_temp[idx_max]['candidate'])
-        ipromp.set_alpha(alpha_temp[idx_max]['candidate'])
+        # task recognition
+        print('Adding via points in each trained model...')
+        for task_idx, ipromp in enumerate(ipromps_set):
+            for idx in range(len(timestamp)):
+                ipromp.add_viapoint(timestamp[idx] / alpha_max_list[task_idx], obs_data_post_arr[idx, :])
+            ipromp.param_update(unit_update=True)
+        print('Computing the likelihood for each model under observations...')
 
-    # task recognition
-    print('Adding via points in each trained model...')
-    for task_idx, ipromp in enumerate(ipromps_set):
-        for idx in range(len(timestamp)):
-            ipromp.add_viapoint(timestamp[idx] / alpha_max_list[task_idx], obs_data_post_arr[idx, :])
-        ipromp.param_update(unit_update=True)
-    print('Computing the likelihood for each model under observations...')
+        prob_task = []
+        for ipromp in ipromps_set:
+            prob_task_temp = ipromp.prob_obs()
+            prob_task.append(prob_task_temp)
+        idx_max_prob = np.argmax(prob_task)
+        # idx_max_prob = 0 # a trick for testing
+        print('The max fit model index is task %s' % task_name[idx_max_prob])
 
-    prob_task = []
-    for ipromp in ipromps_set:
-        prob_task_temp = ipromp.prob_obs()
-        prob_task.append(prob_task_temp)
-    idx_max_prob = np.argmax(prob_task)
-    # idx_max_prob = 0 # a trick for testing
-    print('The max fit model index is task %s' % task_name[idx_max_prob])
-
-    # # robot motion generation
-    # [traj_time, traj] = ipromps_set[idx_max_prob].gen_real_traj(alpha_max_list[idx_max_prob])
-    # traj = ipromps_set[idx_max_prob].min_max_scaler.inverse_transform(traj)
-    # robot_traj = traj[:, -3:]
-
-    # robot motion generation
-    traj_full = []
-    for ipromp_id, ipromp in enumerate(ipromps_set):
-        [traj_time, traj] = ipromp.gen_real_traj(alpha_max_list[ipromp_id])
-        traj = ipromp.min_max_scaler.inverse_transform(traj)
-        robot_traj = traj[:, 1]
-        human_traj= traj[:, 0]
-        traj_full.append([human_traj, robot_traj])
-    # plot_human_prior()
-    get_parameter()
-    # plot_robot_prior()
+        # robot motion generation
+        traj_full = []
+        for ipromp_id, ipromp in enumerate(ipromps_set):
+            [traj_time, traj] = ipromp.gen_real_traj(alpha_max_list[ipromp_id])
+            traj = ipromp.min_max_scaler.inverse_transform(traj)
+            robot_traj = traj[:, 1]
+            human_traj= traj[:, 0]
+            traj_full.append([human_traj, robot_traj])
+ 
     
-    # plt.plot(y_list[0])
-    # # compute_entropy()
-    # # plot_human_traj(traj_full)
-    # plot_robot_traj(traj_full)
-    plt.show()
-# plot the prior distribution
+        x = np.linspace(-10,10,101)
+        phase_increase = sigmoid_increase(x)
+        phase_decrease = sigmoid_decrease(x)
+        
+
+
+        for task_idx, ipromps_idx in enumerate(ipromps_set):
+            Phi =ipromps_idx.promps[1].Phi
+            tmp_sigma_1 = [None]*101
+            tmp_sigma_2 = [None]*101
+            
+            if obs_ratio[1] == 0.0:
+                meanW0 = ipromps_idx.promps[1].meanW
+                mean_merge = np.dot(Phi.T, meanW0)
+                sigmaW0 = ipromps_idx.promps[1].sigmaW
+                sigma_merge = np.diag(np.dot(Phi.T, np.dot(sigmaW0, Phi)))
+
+            else:
+                mean_updated = ipromps_idx.promps[1].meanW_nUpdated
+                mean_traj_updated = np.dot(Phi.T, mean_updated)
+                sigma_updated = ipromps_idx.promps[1].sigmaW_nUpdated
+                sigma_traj_updated = np.diag(np.dot(Phi.T, np.dot(sigma_updated, Phi)))
+                std_updated_traj = 2 * np.sqrt(sigma_traj_updated)
+
+
+                std_merge_traj = [None]*101
+
+                for idx,phase in enumerate(phase_decrease):
+                    tmp_sigma_1[idx] = mean_merge[idx]/phase
+                for idx,phase in enumerate(phase_increase):
+                    tmp_sigma_2[idx] = sigma_traj_updated[idx]/phase
+        
+                sigma_stack = np.column_stack((tmp_sigma_1,tmp_sigma_2))
+                mean_stack = np.column_stack((mean_merge,mean_traj_updated))
+
+                sigma_merge = [None] * 101
+                for idx,num in enumerate(sigma_stack):
+                    tmp = num[0] * num[1]
+                    divdend =  num[0] + num[1]
+                    sigma_merge[idx] = tmp / divdend
+
+                std_merge_traj = 2*np.sqrt(sigma_merge)
+                mean_merge = [None]*101
+                for idx,num in enumerate(mean_stack):
+                    tmp = num[0] * tmp_sigma_2[idx] + num[1] * tmp_sigma_1[idx]
+                    divdend =  tmp_sigma_1[idx] + tmp_sigma_2[idx]
+                    mean_merge[idx] = tmp / divdend
+                mean_merge = np.array(mean_merge)
+
+                t = np.linspace(0.0, 1.0, 101)
+                plt.figure(task_idx)
+                # plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
+                # plt.plot(t,mean_traj, '--',color="b", linewidth=5,label ="orig_traj")
+
+                plt.fill_between(t,mean_traj_updated-std_updated_traj, mean_traj_updated+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
+                plt.plot(t,mean_traj_updated, '--',color="y", linewidth=5,label="updated_traj")
+
+                plt.fill_between(t,mean_merge-std_merge_traj, mean_merge+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.2)
+                plt.plot(t,mean_merge,'--', color="g", linewidth=5,label="mixed_traj")
+                plt.legend()
+                # plt.show()
+
     
 
 def compute_entropy():

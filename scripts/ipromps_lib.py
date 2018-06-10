@@ -415,9 +415,12 @@ class NDProMP(object):
             new_meanW_full = new_meanW_full + np.dot(K, y_observed - np.dot(h_full, new_meanW_full))
             new_covW_full = new_covW_full - np.dot(K, np.dot(h_full, new_covW_full))
 
+
         # save the updated distribution for ndpromp
         self.meanW_full_updated = new_meanW_full
         self.covW_full_updated = new_covW_full
+        self.meanW_full = self.meanW_full_updated
+        self.covW_full = self.covW_full_updated
 
         # save the updated distribution for each promp
         if unit_update:
