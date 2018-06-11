@@ -35,14 +35,12 @@ info_n_idx = {
             'left_hand': [0],
             'left_joints': [1]
             }
-y_list = []
 def main():
     task_id = 0
     test_index = 20
 
-    obs_ratio_time_1 = np.array([0.,0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
-    obs_ratio_time_2 = np.array([0.,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1. ])
-    
+    obs_ratio_time_1 = np.array([0,  0.3, 0.6])
+    obs_ratio_time_2 = np.array([0.3,  0.6, 1.0])
     obs_ratio_time = np.column_stack((obs_ratio_time_1,obs_ratio_time_2))
 
 
@@ -59,7 +57,7 @@ def main():
     # consider the unobserved info
     obs_data_post_arr[:, num_obs_joints:] = 0.0
 
-    for obs_ratio in obs_ratio_time:
+    for fig_idx,obs_ratio in enumerate(obs_ratio_time):
         obs_data_post_arr =obs_data_post_arr[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0]),:]
         timestamp = timestamp[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0])]
         # phase estimation
@@ -101,127 +99,90 @@ def main():
         phase_increase = sigmoid_increase(x)
         phase_decrease = sigmoid_decrease(x)
         
-
-
+        para_need_list = []
         for task_idx, ipromps_idx in enumerate(ipromps_set):
-            Phi =ipromps_idx.promps[1].Phi
+            Phi =ipromps_idx.promps[1].Phi.astype("float64")
+            meanW0 = ipromps_idx.promps[1].meanW.astype("float64")
+            mean_traj = np.dot(Phi.T, meanW0).astype("float64")
+            sigmaW0 = ipromps_idx.promps[1].sigmaW.astype("float64")
+            sigma_traj = np.diag(np.dot(Phi.T, np.dot(sigmaW0, Phi))).astype("float64")
+            std_traj = 2 * np.sqrt(sigma_traj).astype("float64")
+
+            mean_updated = ipromps_idx.promps[1].meanW_nUpdated.astype("float64")
+            mean_traj_updated = np.dot(Phi.T, mean_updated).astype("float64")
+            sigma_updated = ipromps_idx.promps[1].sigmaW_nUpdated.astype("float64")
+            sigma_traj_updated = np.diag(np.dot(Phi.T, np.dot(sigma_updated, Phi))).astype("float64")
+            std_updated_traj = 2 * np.sqrt(sigma_traj_updated).astype("float64")
+            tmp_dict = {'Phi':Phi, 'meanW0':meanW0, 'mean_traj':mean_traj, 'sigmaW0':sigmaW0, 'sigma_traj':sigma_traj, 'std_traj':std_traj, 'mean_updated':mean_updated,
+            'mean_traj_updated': mean_traj_updated,'sigma_updated':sigma_updated,'sigma_traj_updated':sigma_traj_updated,'std_updated_traj':std_updated_traj}
+            para_need_list.append(tmp_dict) 
+        para_need_list = np.array(para_need_list)
+        
+        tmp_mix = []
+        for task_idx, var in enumerate(para_need_list):
             tmp_sigma_1 = [None]*101
             tmp_sigma_2 = [None]*101
-            
-            if obs_ratio[1] == 0.0:
-                meanW0 = ipromps_idx.promps[1].meanW
-                mean_merge = np.dot(Phi.T, meanW0)
-                sigmaW0 = ipromps_idx.promps[1].sigmaW
-                sigma_merge = np.diag(np.dot(Phi.T, np.dot(sigmaW0, Phi)))
+            sigma_merge = [None]*101
+            mean_merge =  [None]*101
+            std_merge_traj = [None]*101
 
-            else:
-                mean_updated = ipromps_idx.promps[1].meanW_nUpdated
-                mean_traj_updated = np.dot(Phi.T, mean_updated)
-                sigma_updated = ipromps_idx.promps[1].sigmaW_nUpdated
-                sigma_traj_updated = np.diag(np.dot(Phi.T, np.dot(sigma_updated, Phi)))
-                std_updated_traj = 2 * np.sqrt(sigma_traj_updated)
-
-
-                std_merge_traj = [None]*101
-
-                for idx,phase in enumerate(phase_decrease):
-                    tmp_sigma_1[idx] = mean_merge[idx]/phase
-                for idx,phase in enumerate(phase_increase):
-                    tmp_sigma_2[idx] = sigma_traj_updated[idx]/phase
-        
-                sigma_stack = np.column_stack((tmp_sigma_1,tmp_sigma_2))
-                mean_stack = np.column_stack((mean_merge,mean_traj_updated))
-
-                sigma_merge = [None] * 101
-                for idx,num in enumerate(sigma_stack):
-                    tmp = num[0] * num[1]
-                    divdend =  num[0] + num[1]
-                    sigma_merge[idx] = tmp / divdend
-
-                std_merge_traj = 2*np.sqrt(sigma_merge)
-                mean_merge = [None]*101
-                for idx,num in enumerate(mean_stack):
-                    tmp = num[0] * tmp_sigma_2[idx] + num[1] * tmp_sigma_1[idx]
-                    divdend =  tmp_sigma_1[idx] + tmp_sigma_2[idx]
-                    mean_merge[idx] = tmp / divdend
-                mean_merge = np.array(mean_merge)
-
-                t = np.linspace(0.0, 1.0, 101)
-                plt.figure(task_idx)
-                # plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
-                # plt.plot(t,mean_traj, '--',color="b", linewidth=5,label ="orig_traj")
-
-                plt.fill_between(t,mean_traj_updated-std_updated_traj, mean_traj_updated+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
-                plt.plot(t,mean_traj_updated, '--',color="y", linewidth=5,label="updated_traj")
-
-                plt.fill_between(t,mean_merge-std_merge_traj, mean_merge+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.2)
-                plt.plot(t,mean_merge,'--', color="g", linewidth=5,label="mixed_traj")
-                plt.legend()
-                # plt.show()
-
+            for idx,phase in enumerate(phase_decrease):
+                tmp_sigma_1[idx] = var["sigma_traj"][idx]/phase
+            for idx,phase in enumerate(phase_increase):
+                tmp_sigma_2[idx] = var['sigma_traj_updated'][idx]/phase
     
+            sigma_stack = np.column_stack((tmp_sigma_1,tmp_sigma_2))
+            mean_stack = np.column_stack((var["mean_traj"],var["mean_traj_updated"]))
+
+            for idx,num in enumerate(sigma_stack):
+                tmp = num[0] * num[1]
+                divdend =  num[0] + num[1]
+                sigma_merge[idx] = tmp / divdend
+            sigma_merge = np.array(sigma_merge)
+            std_merge_traj = 2*np.sqrt(sigma_merge)
+
+            for idx,num in enumerate(mean_stack):
+                tmp = num[0] * tmp_sigma_2[idx] + num[1] * tmp_sigma_1[idx]
+                divdend =  tmp_sigma_1[idx] + tmp_sigma_2[idx]
+                mean_merge[idx] = tmp / divdend
+            mean_merge = np.array(mean_merge)
+            
+            tmp_mix.append([mean_merge,sigma_merge])
+
+            t = np.linspace(0.0, 1.0, 101)
+            plt.figure(fig_idx*10+task_idx)
+            plt.fill_between(t,var["mean_traj"]-var["std_traj"], var["mean_traj"]+var["std_traj"], color="b",label="orig_distribution", alpha=0.1)
+            plt.plot(t,var["mean_traj"], '--',color="b", linewidth=5,label ="orig_traj",alpha=0.1)
+
+            plt.fill_between(t,var["mean_traj_updated"]-var["std_updated_traj"], var["mean_traj_updated"]+var["std_updated_traj"], color="r",label="updated_distribution", alpha=0.3)
+            plt.plot(t,var["mean_traj_updated"], '--',color="r", linewidth=5,label="updated_traj",alpha=0.3)
+
+            plt.fill_between(t,mean_merge-std_merge_traj, mean_merge+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.5)
+            plt.plot(t,mean_merge,'--', color="g", linewidth=5,label="mixed_traj",alpha=0.5)
+            plt.legend()
+    
+        
+
+        for task_idx, ipromps_idx in enumerate(ipromps_set): 
+            Phi = ipromps_idx.promps[1].Phi
+            mean_W = np.dot(np.linalg.inv(np.dot(Phi, Phi.T)), np.dot(Phi, tmp_mix[task_idx][0].T)).T
+            ipromps_idx.promps[1].meanW = mean_W 
+
+            sigmaW0 = ipromps_idx.promps[1].sigmaW.astype("float64")
+            sigma_full = np.dot(Phi.T, np.dot(sigmaW0, Phi)).astype("float64")
+            for idx,var in enumerate(sigma_full):
+                sigma_full[idx][idx] = tmp_mix[task_idx][1][idx]
+            sigma_W = np.dot(np.dot(np.linalg.pinv(Phi.T),sigma_full),np.linalg.pinv(Phi))
+
+            ipromps_idx.promps[1].sigmaW = sigma_W 
+    # plt.show()
+    
+
+
 
 def compute_entropy():
     import scipy.stats
 
-def get_parameter():
-    from scipy import stats
-    # y_list = []
-    
-    x = np.linspace(-10,10,101)
-    phase_increase = sigmoid_increase(x)
-    phase_decrease = sigmoid_decrease(x)
-    for task_idx, ipromps_idx in enumerate(ipromps_set):
-        Phi =ipromps_idx.promps[1].Phi
-        meanW0 = ipromps_idx.promps[1].meanW
-        mean_traj = np.dot(Phi.T, meanW0)
-        sigmaW0 = ipromps_idx.promps[1].sigmaW
-        sigma_traj = np.diag(np.dot(Phi.T, np.dot(sigmaW0, Phi)))
-        std_traj = 2 * np.sqrt(sigma_traj)
-        mean_updated = ipromps_idx.promps[1].meanW_nUpdated
-        mean_traj_updated = np.dot(Phi.T, mean_updated)
-        sigma_updated = ipromps_idx.promps[1].sigmaW_nUpdated
-        sigma_traj_updated = np.diag(np.dot(Phi.T, np.dot(sigma_updated, Phi)))
-        std_updated_traj = 2 * np.sqrt(sigma_traj_updated)
-
-        tmp_sigma_1 = [None]*101
-        tmp_sigma_2 = [None]*101
-        sigma_merge = [None]*101
-        mean_merge =  [None]*101
-        std_merge_traj = [None]*101
-        for idx,phase in enumerate(phase_decrease):
-            tmp_sigma_1[idx] = sigma_traj[idx]/phase
-        for idx,phase in enumerate(phase_increase):
-            tmp_sigma_2[idx] = sigma_traj_updated[idx]/phase
-   
-        sigma_stack = np.column_stack((tmp_sigma_1,tmp_sigma_2))
-        mean_stack = np.column_stack((mean_traj,mean_traj_updated))
-
-        for idx,num in enumerate(sigma_stack):
-            tmp = num[0] * num[1]
-            divdend =  num[0] + num[1]
-            sigma_merge[idx] = tmp / divdend
-        
-        std_merge_traj = 2*np.sqrt(sigma_merge)
-
-        for idx,num in enumerate(mean_stack):
-            tmp = num[0] * tmp_sigma_2[idx] + num[1] * tmp_sigma_1[idx]
-            divdend =  tmp_sigma_1[idx] + tmp_sigma_2[idx]
-            mean_merge[idx] = tmp / divdend
-        mean_merge = np.array(mean_merge)
-
-        t = np.linspace(0.0, 1.0, 101)
-        plt.figure(task_idx)
-        plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
-        plt.plot(t,mean_traj, '--',color="b", linewidth=5,label ="orig_traj")
-
-        plt.fill_between(t,mean_traj_updated-std_updated_traj, mean_traj_updated+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
-        plt.plot(t,mean_traj_updated, '--',color="y", linewidth=5,label="updated_traj")
-
-        plt.fill_between(t,mean_merge-std_merge_traj, mean_merge+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.5)
-        plt.plot(t,mean_merge,'--', color="g", linewidth=5,label="mixed_traj")
-        plt.legend()
-        
 
 
 def sigmoid_increase(x):
