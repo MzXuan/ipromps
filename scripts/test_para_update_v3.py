@@ -35,18 +35,30 @@ info_n_idx = {
             'left_hand': [0],
             'left_joints': [1]
             }
-def sigmoid_increase(x):
-    return (1 / (1 + np.exp(-x)))
 
-def sigmoid_decrease(x):
-    return (1 / (1 + np.exp(x)))
+
+def sigmoid_increase():
+    y_list = []
+    T = np.linspace(-5,5,101)
+    for t_ in T:
+        y =  (1 / (1 + np.exp(-t_)))
+        y_list.append(y)
+    return np.array(y_list)
+
+def sigmoid_decrease():
+    y_list = []
+    T = np.linspace(-5,5,101)
+    for t_ in T:
+        y =  (1 / (1 + np.exp(t_)))
+        y_list.append(y)
+    return np.array(y_list)
 
 def main():
     task_id = 0
     test_index = 20
 
-    obs_ratio_time_1 = np.array([0,  0.5])
-    obs_ratio_time_2 = np.array([0.5,  1.0])
+    obs_ratio_time_1 = np.array([0.0,  0.3, 0.6])
+    obs_ratio_time_2 = np.array([0.3,  0.6, 1.0])
     obs_ratio_time = np.column_stack((obs_ratio_time_1,obs_ratio_time_2))
 
 
@@ -63,6 +75,9 @@ def main():
     # consider the unobserved info
     obs_data_post_arr[:, num_obs_joints:] = 0.0
     
+    mean_merge_traj_full = [None,None,None,None]
+    sigma_merge_traj_full = [None,None,None,None]
+
     for fig_idx,obs_ratio in enumerate(obs_ratio_time):
         obs_data_post_arr =obs_data_post_arr[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0]),:]
         timestamp = timestamp[int(obs_ratio[0]*obs_data.shape[0]):int(obs_ratio[1]*obs_data.shape[0])]
@@ -81,9 +96,6 @@ def main():
             for idx in range(len(timestamp)):
                 ipromp.add_viapoint(timestamp[idx] / alpha_max_list[task_idx], obs_data_post_arr[idx, :])
             ipromp.param_update(unit_update=True)
-            # ipromp.promps[1].plot_prior()
-            # ipromp.promps[1].plot_nUpdated()
-            # # plt.show()
         print('Computing the likelihood for each model under observations...')
 
         prob_task = []
@@ -95,77 +107,98 @@ def main():
         print('The max fit model index is task %s' % task_name[idx_max_prob])
 
 
-    
-        x = np.linspace(-10,10,101)
-        phase_increase = sigmoid_increase(x)
-        phase_decrease = sigmoid_decrease(x)
+        phase_increase = sigmoid_increase()
+        phase_decrease = sigmoid_decrease()
+
+        phase_stack = np.column_stack((phase_decrease,phase_increase))
+
         for task_idx, ipromps_idx in enumerate(ipromps_set):
+            Phi = ipromps_idx.Phi
+            sigma_merge_traj = []
+            mean_merge_traj = []
+            mean_traj = []
+            sigma_traj = []
+            mean_updated_traj = []
+            sigma_updated_traj = []
 
-            Phi =ipromps_idx.promps[1].Phi
-            meanW0 = ipromps_idx.promps[1].meanW
-            sigmaW0 = ipromps_idx.promps[1].sigmaW
-
-            mean_traj = np.dot(Phi.T, meanW0)
-            sigma_traj_full = np.dot(Phi.T, np.dot(sigmaW0, Phi))
-            sigma_traj = np.diag(sigma_traj_full)
-            std_traj = 2 * np.sqrt(sigma_traj)
 
             mean_updated = ipromps_idx.promps[1].meanW_nUpdated
             sigma_updated = ipromps_idx.promps[1].sigmaW_nUpdated
 
-            mean_traj_updated = np.dot(Phi.T, mean_updated)
-            sigma_traj_updated = np.diag(np.dot(Phi.T, np.dot(sigma_updated, Phi)))
-            std_updated_traj = 2 * np.sqrt(sigma_traj_updated)
+            for idx, phase_ in enumerate (phase_stack):
+                
+                phase_de = phase_[0]
+                phase_in = phase_[1]
+                phi = Phi.T[idx]
 
-            tmp_sigma_1 = [None]*101
-            tmp_sigma_2 = [None]*101
-            sigma_merge_traj = [None]*101
-            mean_merge_traj =  [None]*101
-            std_merge_traj = [None]*101
+                if obs_ratio[0] == 0.0:
+                    meanW0 = ipromps_idx.promps[1].meanW
+                    sigmaW0 = ipromps_idx.promps[1].sigmaW
+                    mean_point = np.dot(phi.T, meanW0)
+                    sigma_point = np.dot(phi.T, np.dot(sigmaW0, phi))
+                    
+                else:
+                    mean_point = mean_merge_traj_full[task_idx][idx]
+                    sigma_point = sigma_merge_traj_full[task_idx][idx]
 
-            for idx,phase in enumerate(phase_decrease):
-                tmp_sigma_1[idx] = sigma_traj[idx]/phase
-            for idx,phase in enumerate(phase_increase):
-                tmp_sigma_2[idx] = sigma_traj_updated[idx]/phase
-    
-            sigma_stack = np.column_stack((tmp_sigma_1,tmp_sigma_2))
-            mean_stack = np.column_stack((mean_traj,mean_traj_updated))
+                mean_point_updated = np.dot(phi.T, mean_updated)
+                sigma_point_updated = np.dot(phi.T, np.dot(sigma_updated, phi))
 
-            for idx,num in enumerate(sigma_stack):
-                tmp = num[0] * num[1]
-                divdend =  num[0] + num[1]
-                sigma_merge_traj[idx] = tmp / divdend
-            
-            
+                sigma_point_activated = sigma_point/phase_de
+                sigma_updated_activated = sigma_point_updated/phase_in
 
-            for idx,num in enumerate(mean_stack):
-                tmp = num[0] * tmp_sigma_2[idx] + num[1] * tmp_sigma_1[idx]
-                divdend =  tmp_sigma_1[idx] + tmp_sigma_2[idx]
-                mean_merge_traj[idx] = tmp / divdend
-            
+                sigma_divd_up = sigma_point_activated * sigma_updated_activated
+                sigma_divdend = sigma_point_activated + sigma_updated_activated
+                sigma_merge_point = sigma_divd_up / sigma_divdend
+
+                mean_divd_up = mean_point*sigma_updated_activated + mean_point_updated*sigma_point_activated
+                mean_merge_point =  mean_divd_up / sigma_divdend
+
+                mean_traj.append(mean_point)
+                sigma_traj.append(sigma_point)
+
+                mean_updated_traj.append(mean_point_updated)
+                sigma_updated_traj.append(sigma_point_updated)
+
+                mean_merge_traj.append(mean_merge_point)
+                sigma_merge_traj.append(sigma_merge_point)
+
+
+
             mean_merge_traj = np.array(mean_merge_traj)
-            sigma_merge_traj = np.array(sigma_merge_traj)     
-            std_merge_traj = 2*np.sqrt(sigma_merge_traj)
+            sigma_merge_traj = np.array(sigma_merge_traj)
+            
+            std_traj = 2*np.sqrt(sigma_traj).astype("float64")
+            std_updated_traj = 2*np.sqrt(sigma_updated_traj).astype("float64")
+            std_merge_traj = 2*np.sqrt(sigma_merge_traj).astype("float64")
+
+
+            mean_merge_traj_full[task_idx]= mean_merge_traj
+            sigma_merge_traj_full[task_idx]=sigma_merge_traj 
+
+
+            ###########
+            ###########
 
             t = np.linspace(0.0, 1.0, 101)
             plt.figure(fig_idx*10+task_idx)
+            plt.subplot(2, 1, 1)
+            plt.title('Gaussian distribution merge')
             plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
             plt.plot(t,mean_traj, '--',color="b", linewidth=5,label ="orig_traj",alpha=0.1)
 
-            plt.fill_between(t,mean_traj_updated-std_updated_traj, mean_traj_updated+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
-            plt.plot(t,mean_traj_updated, '--',color="y", linewidth=5,label="updated_traj",alpha=0.3)
+            plt.fill_between(t,mean_updated_traj-std_updated_traj, mean_updated_traj+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
+            plt.plot(t,mean_updated_traj, '--',color="y", linewidth=5,label="updated_traj",alpha=0.3)
 
             plt.fill_between(t,mean_merge_traj-std_merge_traj, mean_merge_traj+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.5)
             plt.plot(t,mean_merge_traj,'--', color="g", linewidth=5,label="merge_traj",alpha=0.5)
+            plt.subplot(2, 1, 2)
+            plt.title('Phase activation')
+            plt.plot(t,phase_decrease,color="b")
+            plt.plot(t,phase_increase,color="y")
             plt.legend()
             
-            mean_W = np.dot(np.linalg.inv(np.dot(Phi, Phi.T)), np.dot(Phi, mean_merge_traj.T)).T
-            ipromps_idx.promps[1].meanW = mean_W 
 
-            # for idx,var in enumerate(sigma_full):
-            #     sigma_full[idx][idx] = sigma_merge_traj[idx]
-            sigma_W = np.dot(np.dot(np.linalg.pinv(Phi.T),sigma_traj_full),np.linalg.pinv(Phi))
-            ipromps_idx.promps[1].sigmaW = sigma_W 
     plt.show()
 
 

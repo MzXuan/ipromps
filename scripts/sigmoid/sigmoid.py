@@ -17,8 +17,8 @@ mySigmoid = []
 # linespace generate an array from start and stop value
 # with requested number of elements. Example 10 elements or 100 elements.
 # 
-x = plt.linspace(-10,10,31)
-y = plt.linspace(-10,10,31)
+x = plt.linspace(-5,5,31)
+y = plt.linspace(-5,5,31)
 
 # prepare the plot, associate the color r(ed) or b(lue) and the label 
 plt.plot(x, sigmoid_1(x), 'r', label='linspace(-10,10,10)')

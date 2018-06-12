@@ -94,10 +94,10 @@ def main():
 
     
         x = np.linspace(-10,10,101)
-        phase_increase_list = sigmoid_increase(x)
-        phase_increase = phase_increase_list[int(phase_increase_list.shape[0] * obs_ratio[1])-1]
-        phase_decrease_list = sigmoid_decrease(x)
-        phase_decrease = phase_decrease_list[int(phase_decrease_list.shape[0] * obs_ratio[1])-1]
+        phase_increase = sigmoid_increase(x)
+        # phase_increase = phase_increase_list[int(phase_increase_list.shape[0] * obs_ratio[1])-1]
+        phase_decrease = sigmoid_decrease(x)
+        # phase_decrease = phase_decrease_list[int(phase_decrease_list.shape[0] * obs_ratio[1])-1]
         for task_idx, ipromps_idx in enumerate(ipromps_set):
 
             Phi =ipromps_idx.promps[1].Phi
@@ -106,6 +106,7 @@ def main():
 
             mean_traj = np.dot(Phi.T, meanW0)
             sigma_traj_full = np.dot(Phi.T, np.dot(sigmaW0, Phi))
+
             sigma_traj = np.diag(sigma_traj_full)
             std_traj = 2 * np.sqrt(sigma_traj)
 
@@ -114,24 +115,32 @@ def main():
 
             mean_traj_updated = np.dot(Phi.T, mean_updated)
             sigma_traj_full_updated = np.dot(Phi.T, np.dot(sigma_updated, Phi))
+
             sigma_traj_updated = np.diag(sigma_traj_full_updated)
             std_updated_traj = 2 * np.sqrt(sigma_traj_updated)
 
 
-
-            tmp1 = np.linalg.inv((sigma_traj_full/phase_decrease))
-            tmp2 = np.linalg.inv((sigma_traj_full_updated/phase_increase))
+            phase_stack = np.column_stack((phase_decrease,phase_increase))
+            sigma_merge_traj_full = np.array([]).reshape(101,0)
+            for idx, phase_ in enumerate(phase_stack):
+                phase_de = phase_[0]
+                phase_in = phase_[1]
+                tmp1 = np.linalg.pinv((sigma_traj_full[idx].reshape(101,1)/phase_de))
+                tmp2 = np.linalg.pinv((sigma_traj_full_updated[idx].reshape(101,1)/phase_in))
             
-            sigma_merge_traj_full = np.linalg.inv(tmp1 + tmp2)
+                sigma_merge_traj_step = np.linalg.pinv(tmp1 + tmp2)
+                
+                sigma_merge_traj_full = np.column_stack((sigma_merge_traj_full,sigma_merge_traj_step))
+                
 
-            tmp_diag = np.diag(sigma_merge_traj_full).astype("float64")
+                # tmp_diag = np.diag(sigma_merge_traj_full).astype("float64")
 
-            sigma_merge_traj_full_std = 2 * np.sqrt(tmp_diag)
+                # sigma_merge_traj_full_std = 2 * np.sqrt(tmp_diag)
 
 
-            sum_ = np.dot(tmp1,mean_traj) + np.dot(tmp2,mean_traj_updated)
+                sum_ = np.dot(tmp1,mean_traj) + np.dot(tmp2,mean_traj_updated)
 
-            mean_merge_traj = np.dot((tmp1+tmp2),sum_)
+                mean_merge_traj = np.dot((tmp1+tmp2),sum_)
 
 
 
