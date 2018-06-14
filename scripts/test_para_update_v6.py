@@ -203,24 +203,24 @@ def main():
 
             ###########
             ###########
+            if task_idx == idx_max_prob:
+                t = np.linspace(0.0, 1.0, 101)
+                plt.figure(fig_idx*10+task_idx)
+                plt.subplot(2, 1, 1)
+                plt.title('Gaussian distribution merge')
+                plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
+                plt.plot(t,mean_traj, '-.',color="b", linewidth=1,label ="orig_traj")
 
-            t = np.linspace(0.0, 1.0, 101)
-            plt.figure(fig_idx*10+task_idx)
-            plt.subplot(2, 1, 1)
-            plt.title('Gaussian distribution merge')
-            plt.fill_between(t,mean_traj-std_traj, mean_traj+std_traj, color="b",label="orig_distribution", alpha=0.1)
-            plt.plot(t,mean_traj, '-.',color="b", linewidth=1,label ="orig_traj")
+                plt.fill_between(t,mean_updated_traj-std_updated_traj, mean_updated_traj+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
+                plt.plot(t,mean_updated_traj, '--',color="y", linewidth=1,label="updated_traj")
 
-            plt.fill_between(t,mean_updated_traj-std_updated_traj, mean_updated_traj+std_updated_traj, color="y",label="updated_distribution", alpha=0.3)
-            plt.plot(t,mean_updated_traj, '--',color="y", linewidth=1,label="updated_traj")
-
-            plt.fill_between(t,mean_merge_traj-std_merge_traj, mean_merge_traj+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.1)
-            plt.plot(t,mean_merge_traj,'-', color="g", linewidth=1,label="merge_traj")
-            plt.subplot(2, 1, 2)
-            plt.title('Phase activation')
-            plt.plot(t,phase_decrease,color="b")
-            plt.plot(t,phase_increase,color="y")
-            plt.legend()
+                plt.fill_between(t,mean_merge_traj-std_merge_traj, mean_merge_traj+std_merge_traj, color="g",label= "mixed_distribution", alpha=0.1)
+                plt.plot(t,mean_merge_traj,'-', color="g", linewidth=1,label="merge_traj")
+                plt.subplot(2, 1, 2)
+                plt.title('Phase activation')
+                plt.plot(t,phase_decrease,color="b")
+                plt.plot(t,phase_increase,color="y")
+                plt.legend()
             
 
     plt.show()
