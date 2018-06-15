@@ -66,7 +66,7 @@ def plot_raw_data(num=0):
         fig.suptitle('the raw data of ' + info)
         for demo_idx in range(ipromps_idx.num_demos):
             # ax = fig.add_subplot(joint_num)
-            data = datasets_raw[task_idx][demo_idx][info]
+            data = datasets_raw[task_idx][demo_idx]["left_joints"]
             plt.plot(np.array(range(len(data)))/100.0, data)
 
 # plot the norm data
@@ -77,7 +77,7 @@ def plot_norm_data(num=0):
         for demo_idx in range(ipromps_idx.num_demos):
             for joint_idx in range(joint_num):
                 ax = fig.add_subplot(joint_num, 1, 1 + joint_idx)
-                data = datasets_norm[task_idx][demo_idx][info][:, joint_idx]
+                data = datasets_norm[task_idx][demo_idx]["left_joints"][:, joint_idx]
                 plt.plot(np.array(range(len(data)))/100.0, data)
                 ax.set_xlabel('t(s)')
                 ax.set_ylabel('y(m)')
@@ -403,7 +403,7 @@ def main():
     # plot_preproc_data(10)
     # plot_filtered_data(10)
     # plot_single_dim(0)
-    plot_prior(0)
+    # plot_prior(0)
     # plot_post()
     # plot_alpha()
     # plot_robot_traj()
@@ -415,7 +415,7 @@ def main():
     #3D
     # plot_3d_raw_traj(10)
     # plot_3d_gen_r_traj_online(10)
-    # pairs_offline(0)
+    pairs_offline(0)
     # pairs_online(10)
     # plt.legend(prop = {'size': 20})
     plt.show()
