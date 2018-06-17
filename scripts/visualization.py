@@ -235,22 +235,18 @@ def plot_3d_raw_traj(num=0):
 def plot_3d_filtered_h_traj(num=0):
     for task_idx, demo_list in enumerate(data_index):
         fig = plt.figure(task_idx+num)
-        # ax = fig.gca(projection='3d')
+        ax = fig.gca(projection='3d')
         for demo_idx in demo_list:
             data = datasets_filtered[task_idx][demo_idx]['left_hand']
-            plt.plot(data)
-                    # label='training sets about human '+str(demo_idx), alpha=0.3)
-                    
-            # ax.set_xlabel('X (m)')
-            # ax.set_ylabel('Y (m)')
-            # ax.set_zlabel('Z (m)')
-            # ax.legend()
-
+            ax.plot(data[:, 0], data[:, 1], data[:, 2],
+                    # linewidth=3, linestyle='-', label='training sets about robot '+str(demo_idx), alpha=0.3)
+                    linewidth=2, linestyle='-', alpha=0.8)
 
 # plot the offline obs
 def plot_offline_3d_obs(num=0):
     for task_idx, demo_list in enumerate(data_index):
         fig = plt.figure(task_idx + num)
+        plt.title('task_idx is: %d' % task_idx)
         ax = fig.gca(projection='3d')
         obs_data_dict = ground_truth
         data = obs_data_dict['left_hand']

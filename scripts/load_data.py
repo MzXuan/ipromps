@@ -35,6 +35,7 @@ print data_index
 def main():
     # datasets-related info
     task_path_list = glob.glob(os.path.join(datasets_path, 'raw/*'))
+    task_path_list.sort()
     task_name_list = [task_path.split('/')[-1] for task_path in task_path_list]
 
     # load raw datasets
@@ -43,6 +44,7 @@ def main():
         task_csv_path = os.path.join(task_path, 'csv')
         print('Loading data from: ' + task_csv_path)
         demo_path_list = glob.glob(os.path.join(task_csv_path, '201*'))   # the prefix of dataset file
+        demo_path_list.sort()
         demo_temp = []
         for demo_path in demo_path_list:
             data_csv = pd.read_csv(os.path.join(demo_path, 'multiModal_states.csv'))    # the file name of csv
