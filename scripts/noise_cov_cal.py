@@ -29,7 +29,7 @@ def main():
 
     # extract the all signals data ORIENTATION
     # emg = data.values[:, 7:15].astype(float)
-    left_hand = data.values[:, 207:210].astype(float)
+    left_hand = data.values[:, [207,208,209,197,198,199]].astype(float)
     left_joints = data.values[:, 317:320].astype(float)  # robot ee actually
 
     # stack them as a big matrix

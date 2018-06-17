@@ -51,7 +51,7 @@ def main():
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
-                                  data_csv.values[:, 207:210].astype(float),   # human left hand position
+                                  data_csv.values[:, [207,208,209,197,198,199]].astype(float),   # human left hand position
                                 #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
                               'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
@@ -119,8 +119,8 @@ def main():
             temp = datasets_norm_full[(task_idx * num_demo + demo_idx) * len_norm:
             (task_idx * num_demo + demo_idx) * len_norm + len_norm, :]
             datasets_temp.append({
-                                    'left_hand': temp[:, 0:3],
-                                    'left_joints': temp[:, 3:6],
+                                    'left_hand': temp[:, 0:6],
+                                    'left_joints': temp[:, 6:9],
                                     'alpha': datasets4train[task_idx][demo_idx]['alpha']})
         datasets_norm_preproc.append(datasets_temp)
 
