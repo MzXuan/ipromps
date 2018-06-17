@@ -254,13 +254,14 @@ def plot_offline_3d_obs(num=0):
         ax = fig.gca(projection='3d')
         obs_data_dict = ground_truth
         data = obs_data_dict['left_hand']
+        #
         ax.plot(data[0:num_obs:15, 0], data[0:num_obs:15, 1], data[0:num_obs:15, 2],
                 'o', markersize=10, label='Human motion observations', alpha=1.0,
                 markerfacecolor='none', markeredgewidth=3.0, markeredgecolor='g')
         ax.plot(data[:, 0], data[:, 1], data[:, 2],
                 '-', linewidth=5, color='blue', label='Human trajectory ground truth', alpha = 1.0)
+
         data = ground_truth['left_joints']
-        # import ipdb;ipdb.set_trace()
         ax.plot(data[:, 0], data[:, 1], data[:, 2],
                 linewidth=5, linestyle='-', color='r', label='Robot trajectory ground Truth', alpha=1.0)
         ax.set_xlabel('X (m)')

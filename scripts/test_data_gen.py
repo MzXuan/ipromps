@@ -94,8 +94,8 @@ def main():
     for ipromp_id, ipromp in enumerate(ipromps_set):
         [traj_time, traj] = ipromp.gen_real_traj(alpha_max_list[ipromp_id])
         traj = ipromp.min_max_scaler.inverse_transform(traj)
-        robot_traj = traj[:, 2:4]
-        human_traj= traj[:, 0:2]
+        robot_traj = traj[:, 3:6]
+        human_traj= traj[:, 0:3]
         traj_full.append([human_traj, robot_traj])
 
     # # test: robot motion generation for task2

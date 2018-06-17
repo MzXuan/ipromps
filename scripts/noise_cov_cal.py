@@ -29,8 +29,8 @@ def main():
 
     # extract the all signals data ORIENTATION
     # emg = data.values[:, 7:15].astype(float)
-    left_hand = data.values[:, 207:209].astype(float)
-    left_joints = data.values[:, 317:319].astype(float)  # robot ee actually
+    left_hand = data.values[:, 207:210].astype(float)
+    left_joints = data.values[:, 317:320].astype(float)  # robot ee actually
 
     # stack them as a big matrix
     full_data = np.hstack([left_hand, left_joints])[1200:, :]

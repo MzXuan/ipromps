@@ -29,7 +29,8 @@ cp_datasets.read(os.path.join(datasets_path, './info/cfg/datasets.cfg'))
 # read datasets params
 data_index_sec = cp_datasets.items('index_17')
 data_index = [map(int, task[1].split(',')) for task in data_index_sec]
-
+# data_index = [range(0,44),range(0,44)]
+print data_index
 
 def main():
     # datasets-related info
@@ -48,10 +49,10 @@ def main():
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
-                                  data_csv.values[:, 207:209].astype(float),   # human left hand position
+                                  data_csv.values[:, 207:210].astype(float),   # human left hand position
                                 #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
-                              'left_joints': data_csv.values[:, 317:319].astype(float)  # robot ee actually
+                              'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
                               })
         datasets_raw.append(demo_temp)
 
@@ -116,8 +117,8 @@ def main():
             temp = datasets_norm_full[(task_idx * num_demo + demo_idx) * len_norm:
             (task_idx * num_demo + demo_idx) * len_norm + len_norm, :]
             datasets_temp.append({
-                                    'left_hand': temp[:, 0:2],
-                                    'left_joints': temp[:, 2:4],
+                                    'left_hand': temp[:, 0:3],
+                                    'left_joints': temp[:, 3:6],
                                     'alpha': datasets4train[task_idx][demo_idx]['alpha']})
         datasets_norm_preproc.append(datasets_temp)
 
