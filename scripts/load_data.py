@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # data structure is: list(task1,2...)-->list(demo1,2...)-->dict(emg,imu,tf...)
 import numpy as np
+import operator
 import pandas as pd
 from scipy.interpolate import griddata
 from sklearn.externals import joblib
@@ -32,6 +33,7 @@ data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 # data_index = [range(0,44),range(0,44)]
 print data_index
 
+
 def main():
     # datasets-related info
     task_path_list = glob.glob(os.path.join(datasets_path, 'raw/*'))
@@ -48,15 +50,22 @@ def main():
         demo_temp = []
         for demo_path in demo_path_list:
             data_csv = pd.read_csv(os.path.join(demo_path, 'multiModal_states.csv'))    # the file name of csv
+            robot_traj = data_csv.values[:, 317:320].astype(float)
+            human_hand_traj = data_csv.values[:, 207:210].astype(float)
+            delta_temp = [x1 - x2 for (x1, x2) in zip(robot_traj, human_hand_traj)]
+            delta_traj = np.array(delta_temp)
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
                                   data_csv.values[:, [207,208,209,197,198,199]].astype(float),   # human left hand position
                                 #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
-                              'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
+                              'left_joints': delta_traj # robot ee actually
                               })
         datasets_raw.append(demo_temp)
+
+    # todo: calculate delta data in the dataset
+
 
     # filter the datasets: gaussian_filter1d
     datasets_filtered = []
