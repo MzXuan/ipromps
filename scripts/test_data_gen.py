@@ -35,7 +35,7 @@ data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 
 task_id = 0
 test_index = 20
-obs_ratio = 1.0
+obs_ratio = 0.9
 step = 0.2
 
 def main():

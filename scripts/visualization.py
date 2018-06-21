@@ -257,7 +257,7 @@ def plot_offline_3d_obs(num=0):
         ax.plot(data[:, 0], data[:, 1], data[:, 2],
                 '-', linewidth=5, color='blue', label='Human trajectory ground truth', alpha = 1.0)
 
-        data = ground_truth['left_joints']
+        data = ground_truth['left_joints']+ground_truth['left_hand'][:,0:3]
         ax.plot(data[:, 0], data[:, 1], data[:, 2],
                 linewidth=5, linestyle='-', color='r', label='Robot trajectory ground Truth', alpha=1.0)
         ax.set_xlabel('X (m)')
@@ -272,7 +272,9 @@ def plot_3d_filtered_r_traj(num=0):
         fig = plt.figure(task_idx+num)
         ax = fig.gca(projection='3d')
         for demo_idx in demo_list:
-            data = datasets_filtered[task_idx][demo_idx]['left_joints']
+            # data = datasets_filtered[task_idx][demo_idx]['left_joints']
+            data = datasets_filtered[task_idx][demo_idx]['left_joints'] \
+                   +datasets_filtered[task_idx][demo_idx]['left_hand'][:,0:3]
             ax.plot(data[:, 0], data[:, 1], data[:, 2],
                     # linewidth=3, linestyle='-', label='training sets about robot '+str(demo_idx), alpha=0.3)
                     linewidth=2, linestyle='-', alpha=0.8)
@@ -290,12 +292,14 @@ def plot_gen_3d_offline_r_traj(num=0):
     for task_idx, demo_list in enumerate(data_index):
         fig = plt.figure(task_idx+num)
         ax = fig.gca(projection='3d')
-        data = robot_traj_offline[task_idx][1]
-        ax.plot(data[:, 0], data[:, 1], data[:, 2], 'r',
-                linewidth=5, linestyle='--', label='Predicted robot trajectory')
-        data = robot_traj_offline[task_idx][0]
+
+        data = robot_traj_offline[task_idx][0] #predicted human trajectory
         ax.plot(data[:, 0], data[:, 1], data[:, 2], 'b',
                 linewidth=5, linestyle='--', label='Predicted human trajectory')
+
+        data = robot_traj_offline[task_idx][1]+data[:,0:3] #predict delta robot postion + human predicted trajectory
+        ax.plot(data[:, 0], data[:, 1], data[:, 2], 'r',
+                linewidth=5, linestyle='--', label='Predicted robot trajectory')
 
         ax.set_xlabel('X (m)')
         ax.set_ylabel('Y (m)')
