@@ -69,6 +69,19 @@ def plot_raw_data(num=0):
             data = datasets_raw[task_idx][demo_idx]["left_joints"]
             plt.plot(np.array(range(len(data)))/100.0, data)
 
+def plot_raw_data_2D(num=0):
+    for task_idx, ipromps_idx in enumerate(ipromps_set):
+        fig = plt.figure(task_idx + num)
+        fig.suptitle('the 2d raw data of ' + info)
+        for demo_idx in range(ipromps_idx.num_demos):
+            for joint_idx in range(joint_num):
+                ax = fig.add_subplot(joint_num, 1, 1 + joint_idx)
+                data = datasets_raw[task_idx][demo_idx][info][:, joint_idx]
+                plt.plot(np.array(range(len(data)))/100.0, data, )
+                ax.set_xlabel('t(s)')
+                ax.set_ylabel('y(m)')
+                plt.legend()
+
 # plot the norm data
 def plot_norm_data(num=0):
     for task_idx, ipromps_idx in enumerate(ipromps_set):
@@ -92,6 +105,8 @@ def plot_filtered_data(num=0):
                 ax = fig.add_subplot(joint_num, 1, 1 + joint_idx)
                 data = datasets_filtered[task_idx][demo_idx][info][:, joint_idx]
                 plt.plot(np.array(range(len(data)))/100.0, data, )
+                # data2 = datasets_raw[task_idx][demo_idx][info][:, joint_idx] #show raw and filtered on a same figure
+                # plt.plot(np.array(range(len(data2))) / 100.0, data2, )
                 ax.set_xlabel('t(s)')
                 ax.set_ylabel('y(m)')
                 plt.legend()
@@ -398,7 +413,8 @@ def main():
     # plot_raw_data(0)
     # plot_norm_data(0)
     # plot_preproc_data(10)
-    # plot_filtered_data(10)
+    plot_raw_data_2D(0)
+    plot_filtered_data(10)
     # plot_single_dim(0)
     # plot_prior(0)
     # plot_post()
@@ -412,7 +428,7 @@ def main():
     #3D
     # plot_3d_raw_traj(10)
     # plot_3d_gen_r_traj_online(10)
-    pairs_offline(0)
+    # pairs_offline(0)
     # pairs_online(10)
     # plt.legend(prop = {'size': 20})
     plt.show()
