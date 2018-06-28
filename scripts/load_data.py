@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # data structure is: list(task1,2...)-->list(demo1,2...)-->dict(emg,imu,tf...)
+import sys
 import numpy as np
 import pandas as pd
 from scipy.interpolate import griddata
@@ -18,6 +19,9 @@ cp_models = ConfigParser.SafeConfigParser()
 cp_models.read(os.path.join(file_path, '../cfg/models.cfg'))
 # read models params
 datasets_path = os.path.join(file_path, cp_models.get('datasets', 'path'))
+class_index=cp_models.get('datasets', 'class_index')
+class_index_list=class_index.split(',')
+
 len_norm = cp_models.getint('datasets', 'len_norm')
 num_demo = cp_models.getint('datasets', 'num_demo')
 num_joints = cp_models.getint('datasets', 'num_joints')
@@ -32,11 +36,15 @@ data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 # data_index = [range(0,44),range(0,44)]
 print data_index
 
-def main():
+def main(left_hand_index,left_joints_index):
     # datasets-related info
-    task_path_list = glob.glob(os.path.join(datasets_path, 'raw/*'))
+    task_path_list = []
+    for x in class_index_list:
+        task_path_list.append(os.path.join(datasets_path, 'raw/'+ x + '/left_hand/'))
+
     task_path_list.sort()
-    task_name_list = [task_path.split('/')[-1] for task_path in task_path_list]
+    task_name_list = class_index_list
+    # task_name_list = [task_path.split('/')[-1] for task_path in task_path_list]
 
     # load raw datasets
     datasets_raw = []
@@ -51,10 +59,10 @@ def main():
             demo_temp.append({
                               'stamp': (data_csv.values[:, 2].astype(int)-data_csv.values[0, 2])*1e-9,
                               'left_hand': np.hstack([
-                                  data_csv.values[:, [207,208,209,197,198,199]].astype(float),   # human left hand position
+                                  data_csv.values[:, left_hand_index].astype(float),   # human left hand position
                                 #   data_csv.values[:, 7:15].astype(float),  # emg
                                   ]),
-                              'left_joints': data_csv.values[:, 317:320].astype(float)  # robot ee actually
+                              'left_joints': data_csv.values[:, left_joints_index].astype(float)  # robot ee actually
                               })
         datasets_raw.append(demo_temp)
 
@@ -119,8 +127,8 @@ def main():
             temp = datasets_norm_full[(task_idx * num_demo + demo_idx) * len_norm:
             (task_idx * num_demo + demo_idx) * len_norm + len_norm, :]
             datasets_temp.append({
-                                    'left_hand': temp[:, 0:6],
-                                    'left_joints': temp[:, 6:9],
+                                    'left_hand': temp[:, 0:len(left_hand_index)],
+                                    'left_joints': temp[:, len(left_hand_index):len(left_hand_index)+len(left_joints_index)],
                                     'alpha': datasets4train[task_idx][demo_idx]['alpha']})
         datasets_norm_preproc.append(datasets_temp)
 
@@ -138,4 +146,18 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 1:
+        lh = [207,208,209,197,198,199]
+        lj = [317,318,319]
+    elif len(sys.argv)==2:
+        lh=sys.argv[1]
+        lh = lh.split(',')
+        lh = map(int, lh)
+        lj = [317, 318, 319]
+    elif len(sys.argv)>=3:
+        lh=sys.argv[1]
+        lj=sys.argv[2]
+
+    print ('hand:',lh,'robot:',lj)
+
+    main(lh,lj)

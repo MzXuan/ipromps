@@ -7,6 +7,7 @@ import os
 import ConfigParser
 from sklearn.externals import joblib
 import matplotlib.pyplot as plt
+import sys
 
 
 # read the current file path
@@ -35,14 +36,21 @@ data_index = [map(int, task[1].split(',')) for task in data_index_sec]
 
 task_id = 0
 test_index = 20
-obs_ratio = 1.0
+obs_ratio = 0.8
 step = 0.2
 
-def main():
+def main(left_hand_index,left_joints_index):
+    print ("The ground truth class is: ", task_name[task_id])
+    global len_h
+    global len_r
+    len_h = len(left_hand_index)
+    len_r = len(left_joints_index)
     # error_vs_obs()
     save_data()
 
 def error_vs_obs():
+    global len_h
+    global len_r
     traj_error_list = []
     obs = []
     end_eff_self_error = []
@@ -106,8 +114,9 @@ def error_vs_obs():
         for ipromp_id, ipromp in enumerate(ipromps_set):
             [traj_time, traj] = ipromp.gen_real_traj(alpha_max_list[ipromp_id])
             traj = ipromp.min_max_scaler.inverse_transform(traj)
-            robot_traj = traj[:, 6:9]
-            human_traj = traj[:, 0:6]
+            human_traj = traj[:, 0:len_h]
+            robot_traj = traj[:, len_h:len_h+len_r]
+
             traj_full.append([human_traj, robot_traj])
 
         dist = 0.
@@ -178,6 +187,8 @@ def error_vs_obs():
 
 
 def save_data():
+    global len_h
+    global len_r
     print ('obs ratio: ', obs_ratio)
     # read test data
     obs_data_dict = datasets_raw[task_id][test_index]
@@ -237,8 +248,8 @@ def save_data():
     for ipromp_id, ipromp in enumerate(ipromps_set):
         [traj_time, traj] = ipromp.gen_real_traj(alpha_max_list[ipromp_id])
         traj = ipromp.min_max_scaler.inverse_transform(traj)
-        robot_traj = traj[:, 6:9]
-        human_traj = traj[:, 0:6]
+        human_traj = traj[:, 0:len_h]
+        robot_traj = traj[:, len_h:len_h+len_r]
         traj_full.append([human_traj, robot_traj])
 
         # # test: robot motion generation for task2
@@ -259,4 +270,18 @@ def save_data():
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 1:
+        lh = [207, 208, 209, 197, 198, 199]
+        lj = [317, 318, 319]
+    elif len(sys.argv) == 2:
+        lh = sys.argv[1]
+        lh = lh.split(',')
+        lh = map(int, lh)
+        lj = [317, 318, 319]
+    elif len(sys.argv) >= 3:
+        lh = sys.argv[1]
+        lj = sys.argv[2]
+
+    print ('hand:', lh, 'robot:', lj)
+
+    main(lh,lj)
