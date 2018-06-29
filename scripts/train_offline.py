@@ -7,12 +7,8 @@ import sys
 
 def main():
 
-
     print('hand:', left_hand_index, 'robot:', left_joints_index)
-
-    print('## Running the %s' % load_data.__name__)
-    load_data.main(left_hand_index,left_joints_index)
-    print ('noise')
+    print ('generate noise')
     noise_cov_cal.main(left_hand_index,left_joints_index)
     print('## Running the %s' % train_models.__name__)
     train_models.main()
