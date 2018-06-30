@@ -61,32 +61,18 @@ def main():
     cp_models = ConfigParser.SafeConfigParser()
     cp_models.read(os.path.join(FILE_PATH, '../cfg/models.cfg'))
     DATASETS_PATH = os.path.join(FILE_PATH, cp_models.get('datasets', 'path'))
-    # read norm data
-    datasets_norm_path = os.path.join(DATASETS_PATH, 'pkl/datasets_norm.pkl')
-    datasets_norm = joblib.load(datasets_norm_path)
 
-    h_feature_index, r_feature_index, h_dim, r_dim = get_feature_index()
+    # read raw and norm data
+    datasets_norm = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_norm.pkl'))
+    datasets_raw = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_raw.pkl'))
 
-    ## generate new dataset according to the seletive feature
-    data4train = []
-    for i in SELECT_CLASS:
-        traj_temp = []
-        for traj in datasets_norm[i]:
-            traj_temp.append({
-                'alpha': traj['alpha'],
-                'left_hand': traj['left_hand'][:, h_feature_index],
-                'left_joints': traj['left_joints'][:, r_feature_index]
-            })
-        data4train.append(traj_temp)
-    
     #split data to different dataset
-    train_data, val_data, test_data = split(data4train)
+    train_data_norm, _, _ = split(datasets_norm)
+    _, _, test_data_raw = split(datasets_raw)
 
     ##save for future use
-    joblib.dump(train_data, os.path.join(DATASETS_PATH, 'pkl/train_data.pkl'))
-    joblib.dump(val_data, os.path.join(DATASETS_PATH, 'pkl/val_data.pkl'))
-    joblib.dump(test_data, os.path.join(DATASETS_PATH, 'pkl/test_data.pkl'))
-
+    joblib.dump(train_data_norm, os.path.join(DATASETS_PATH, 'pkl/train_data_norm.pkl'))
+    joblib.dump(test_data_raw, os.path.join(DATASETS_PATH, 'pkl/test_data_raw.pkl'))
 
 if __name__ == '__main__':
     main()

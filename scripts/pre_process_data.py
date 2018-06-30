@@ -12,21 +12,21 @@ from sklearn import preprocessing
 from scipy.ndimage.filters import gaussian_filter1d
 
 # the current file path
-file_path = os.path.dirname(__file__)
+FILE_PATH = os.path.dirname(__file__)
+SELECT_CLASS = []
 
 # read models cfg file
 cp_models = ConfigParser.SafeConfigParser()
-cp_models.read(os.path.join(file_path, './models.cfg'))
+cp_models.read(os.path.join(FILE_PATH, '../cfg/models.cfg'))
 # read models params
-datasets_path = os.path.join(file_path, cp_models.get('datasets', 'path'))
+datasets_path = os.path.join(FILE_PATH, cp_models.get('datasets', 'path'))
 len_norm = cp_models.getint('datasets', 'len_norm')
 num_demo = cp_models.getint('datasets', 'num_demo')
-num_joints = cp_models.getint('datasets', 'num_joints')
 sigma = cp_models.getint('filter', 'sigma')
 
-# read datasets cfg file
-cp_datasets = ConfigParser.SafeConfigParser()
-cp_datasets.read(os.path.join(datasets_path, './info/cfg/datasets.cfg'))
+# # read datasets cfg file
+# cp_datasets = ConfigParser.SafeConfigParser()
+# cp_datasets.read(os.path.join(datasets_path, './info/cfg/datasets.cfg'))
 
 
 # read data
@@ -82,14 +82,63 @@ def load_data():
 
             demo_temp.append({
                               'stamp': time_stamp,
+                              'alpha': time_stamp[-1],
                               'left_hand': human_traj,
                               'left_joints': robot_traj,  # robot ee actually
                               })
         datasets_raw.append(demo_temp)
 
+    return datasets_raw, task_name_list
+
+
+def get_feature_index(csv_path='../cfg/models.cfg'):
+    global SELECT_CLASS
+    # read models params
+    cp_models = ConfigParser.SafeConfigParser()
+    cp_models.read(os.path.join(FILE_PATH, csv_path))
+    SELECT_CLASS = cp_models.get('datasets', 'class_index')
+    SELECT_CLASS = map(int, SELECT_CLASS.split(','))
+    emg = cp_models.get("csv_parse", 'emg')
+    imu = cp_models.get("csv_parse", 'imu')
+    elbow_position = cp_models.get("csv_parse", 'elbow_position')
+
+    h_feature_index = [0, 1, 2]  # wrist position
+    r_feature_index = [0, 1, 2]  # end effector position
+    if elbow_position == 'enable':
+        print('enable elbow position')
+        h_feature_index += [3, 4, 5]
+    if emg == 'enable':
+        print('enable emg data')
+        h_feature_index += [6, 7, 8, 9, 10, 11, 12, 13]
+    if imu == 'enable':
+        print('enable imu data')
+        h_feature_index += [14, 15, 16, 17]
+
+    h_dim = len(h_feature_index)
+    r_dim = len(r_feature_index)
+    print('human feature dim:', h_dim, 'robot feature dim:', r_dim)
+
+    return h_feature_index, r_feature_index, h_dim, r_dim
+
+def select_data(datasets,h_feature_index,r_feature_index):
+    ## generate new dataset according to the seletive feature
+    data_select = []
+    for i in SELECT_CLASS:
+        traj_temp = []
+        for traj in datasets[i]:
+            traj_temp.append({
+                'stamp': traj['stamp'],
+                'alpha': traj['alpha'],
+                'left_hand': traj['left_hand'][:, h_feature_index],
+                'left_joints': traj['left_joints'][:, r_feature_index]
+            })
+        data_select.append(traj_temp)
+    return data_select
+
+def filter_data(datasets,task_name_list):
     ## filter the datasets: gaussian_filter1d
     datasets_filtered = []
-    for task_idx, task_data in enumerate(datasets_raw):
+    for task_idx, task_data in enumerate(datasets):
         print('Filtering data of task: ' + task_name_list[task_idx])
         demo_norm_temp = []
 
@@ -101,17 +150,17 @@ def load_data():
             # hand_position_filtered = gaussian_filter1d(demo_data['hand_pos'].T, sigma=sigma).T
             # append filtered trajectory to list
             demo_norm_temp.append({
-                'stamp':time_stamp,
+                'stamp': time_stamp,
                 'alpha': time_stamp[-1],
                 'left_hand': left_hand_filtered,
                 'left_joints': left_joints_filtered,
                 # 'hand_pos': hand_position_filtered
             })
         datasets_filtered.append(demo_norm_temp)
+    return datasets_filtered
 
-    return datasets_filtered, task_name_list
+def regulize_channel(datasets,task_name_list,num_joints):
 
-def regulize_channel(datasets,task_name_list):
     # regulize all the channel to 0-1
     y_full = np.array([]).reshape(0, num_joints)
     for task_idx, task_data in enumerate(datasets):
@@ -133,9 +182,10 @@ def regulize_channel(datasets,task_name_list):
             temp = datasets_norm_full[len_sum:len_sum+traj_len]
             datasets_temp.append({
                                     'stamp': time_stamp,
+                                    'alpha': datasets[task_idx][demo_idx]['alpha'],
                                     'left_hand': temp[:, 0:18],
-                                    'left_joints': temp[:, 18:21],
-                                    'alpha': datasets[task_idx][demo_idx]['alpha']})
+                                    'left_joints': temp[:, 18:21]
+                                    })
             len_sum = len_sum + traj_len
         datasets_reg.append(datasets_temp)
     return datasets_reg,min_max_scaler
@@ -158,6 +208,7 @@ def normalize_length(datasets,task_name_list):
             left_joints_norm = griddata(time_stamp, left_joints_filtered, grid, method='linear')
             # append them to list
             demo_norm_temp.append({
+                                    'stamp': 0,
                                     'alpha': time_stamp[-1],
                                     'left_hand': left_hand_norm,
                                     'left_joints': left_joints_norm
@@ -166,14 +217,25 @@ def normalize_length(datasets,task_name_list):
     return datasets_norm
 
 def main():
-    datasets_filtered, task_name_list = load_data()
+    ## read raw data
+    datasets_raw, task_name_list = load_data()
 
-    datasets_reg,min_max_scaler = regulize_channel(datasets_filtered, task_name_list)
+    ## select feature
+    h_feature_index, r_feature_index, h_dim, r_dim = get_feature_index()
+    datasets_raw_select = select_data(datasets_raw,h_feature_index, r_feature_index)
+
+    ## filtered select data
+    datasets_filtered = filter_data(datasets_raw_select,task_name_list)
+
+    ## regulize to 0-1, and normalize length
+    datasets_reg,min_max_scaler = regulize_channel(datasets_filtered, task_name_list,h_dim+r_dim)
     datasets_norm = normalize_length(datasets_reg, task_name_list)
 
-    # save all the datasets
+    ## save all the datasets
     print('Saving the datasets as pkl ...')
     joblib.dump(task_name_list, os.path.join(datasets_path, 'pkl/task_name_list.pkl'))
+    joblib.dump(datasets_raw, os.path.join(datasets_path, 'pkl/datasets_raw.pkl'))
+    joblib.dump(datasets_raw_select, os.path.join(datasets_path, 'pkl/datasets_raw_select.pkl'))
     joblib.dump(datasets_filtered, os.path.join(datasets_path, 'pkl/datasets_filtered.pkl'))
     joblib.dump(datasets_reg, os.path.join(datasets_path, 'pkl/datasets_reg.pkl'))
     joblib.dump(min_max_scaler, os.path.join(datasets_path, 'pkl/min_max_scaler.pkl'))
