@@ -5,6 +5,8 @@ import seperate_data
 
 def main():
 
+    print ('seperate data to different sets...')
+    seperate_data.main()
     _,_,h_dim,r_dim = seperate_data.get_feature_index()
 
     print('hand:', h_dim, 'robot:', r_dim)

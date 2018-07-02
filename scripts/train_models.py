@@ -4,6 +4,7 @@ import ipromps_lib
 from sklearn.externals import joblib
 import os
 import ConfigParser
+import pickle
 
 
 # the current file path
@@ -29,10 +30,10 @@ noise_cov_path = os.path.join(datasets_pkl_path, 'noise_cov.pkl')
 
 def main(h_dim=3,r_dim=3):
     # load the data from pkl
-    task_name = joblib.load(task_name_path)
-    datasets_norm_preproc = joblib.load(datasets_norm_train_path)
-    min_max_scaler = joblib.load(min_max_scaler_path)
-    noise_cov = joblib.load(noise_cov_path)
+    task_name = pickle.load(open(task_name_path,"rb"))
+    datasets_norm_preproc = pickle.load(open(datasets_norm_train_path,"rb"))
+    min_max_scaler = pickle.load(open(min_max_scaler_path,"rb"))
+    noise_cov = pickle.load(open(noise_cov_path,"rb"))
 
 
     # create iProMPs sets
@@ -52,7 +53,7 @@ def main(h_dim=3,r_dim=3):
 
     # save the trained models
     print('Saving the trained models...')
-    joblib.dump(ipromps_set, os.path.join(datasets_pkl_path, 'ipromps_set.pkl'))
+    pickle.dump(ipromps_set, open(os.path.join(datasets_pkl_path, 'ipromps_set.pkl'),"wb"))
 
     print('Trained the IProMPs successfully!!!')
 

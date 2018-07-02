@@ -10,10 +10,11 @@ import os
 import ConfigParser
 from sklearn import preprocessing
 from scipy.ndimage.filters import gaussian_filter1d
+import pickle
 
 # the current file path
 FILE_PATH = os.path.dirname(__file__)
-SELECT_CLASS = []
+TASK_NAME_LIST = []
 
 # read models cfg file
 cp_models = ConfigParser.SafeConfigParser()
@@ -21,8 +22,11 @@ cp_models.read(os.path.join(FILE_PATH, '../cfg/models.cfg'))
 # read models params
 datasets_path = os.path.join(FILE_PATH, cp_models.get('datasets', 'path'))
 len_norm = cp_models.getint('datasets', 'len_norm')
-num_demo = cp_models.getint('datasets', 'num_demo')
+# num_demo = cp_models.getint('datasets', 'num_demo')
 sigma = cp_models.getint('filter', 'sigma')
+
+TASK_NAME_LIST = cp_models.get('datasets', 'class_name')
+TASK_NAME_LIST = TASK_NAME_LIST.split(',')
 
 # # read datasets cfg file
 # cp_datasets = ConfigParser.SafeConfigParser()
@@ -31,10 +35,13 @@ sigma = cp_models.getint('filter', 'sigma')
 
 # read data
 def load_data():
+    global TASK_NAME_LIST
+
     # datasets-related info
-    task_path_list = glob.glob(os.path.join(datasets_path, 'raw/*'))
-    task_path_list.sort()
-    task_name_list = [task_path.split('/')[-1] for task_path in task_path_list]
+    task_path_list = []
+    for task in TASK_NAME_LIST:
+        task_path_list.append(os.path.join(datasets_path, 'raw/'+task))
+
 
     # load raw datasets
     datasets_raw = []
@@ -88,7 +95,7 @@ def load_data():
                               })
         datasets_raw.append(demo_temp)
 
-    return datasets_raw, task_name_list
+    return datasets_raw
 
 
 def get_feature_index(csv_path='../cfg/models.cfg'):
@@ -96,8 +103,7 @@ def get_feature_index(csv_path='../cfg/models.cfg'):
     # read models params
     cp_models = ConfigParser.SafeConfigParser()
     cp_models.read(os.path.join(FILE_PATH, csv_path))
-    SELECT_CLASS = cp_models.get('datasets', 'class_index')
-    SELECT_CLASS = map(int, SELECT_CLASS.split(','))
+
     emg = cp_models.get("csv_parse", 'emg')
     imu = cp_models.get("csv_parse", 'imu')
     elbow_position = cp_models.get("csv_parse", 'elbow_position')
@@ -123,7 +129,7 @@ def get_feature_index(csv_path='../cfg/models.cfg'):
 def select_data(datasets,h_feature_index,r_feature_index):
     ## generate new dataset according to the seletive feature
     data_select = []
-    for i in SELECT_CLASS:
+    for i in range(0,len(datasets)):
         traj_temp = []
         for traj in datasets[i]:
             traj_temp.append({
@@ -135,11 +141,12 @@ def select_data(datasets,h_feature_index,r_feature_index):
         data_select.append(traj_temp)
     return data_select
 
-def filter_data(datasets,task_name_list):
+def filter_data(datasets):
+    global TASK_NAME_LIST
     ## filter the datasets: gaussian_filter1d
     datasets_filtered = []
     for task_idx, task_data in enumerate(datasets):
-        print('Filtering data of task: ' + task_name_list[task_idx])
+        print('Filtering data of task: ' + TASK_NAME_LIST[task_idx])
         demo_norm_temp = []
 
         for demo_data in task_data:
@@ -159,12 +166,12 @@ def filter_data(datasets,task_name_list):
         datasets_filtered.append(demo_norm_temp)
     return datasets_filtered
 
-def regulize_channel(datasets,task_name_list,num_joints):
-
+def regulize_channel(datasets,h_dim,r_dim):
+    global TASK_NAME_LIST
     # regulize all the channel to 0-1
-    y_full = np.array([]).reshape(0, num_joints)
+    y_full = np.array([]).reshape(0, h_dim+r_dim)
     for task_idx, task_data in enumerate(datasets):
-        print('Preprocessing data for task: ' + task_name_list[task_idx])
+        print('Preprocessing data for task: ' + TASK_NAME_LIST[task_idx])
         for demo_data in task_data:
             h = np.hstack([demo_data['left_hand'], demo_data['left_joints']])
             y_full = np.vstack([y_full, h])
@@ -183,19 +190,20 @@ def regulize_channel(datasets,task_name_list,num_joints):
             datasets_temp.append({
                                     'stamp': time_stamp,
                                     'alpha': datasets[task_idx][demo_idx]['alpha'],
-                                    'left_hand': temp[:, 0:18],
-                                    'left_joints': temp[:, 18:21]
+                                    'left_hand': temp[:, 0:h_dim],
+                                    'left_joints': temp[:, h_dim:h_dim+r_dim]
                                     })
             len_sum = len_sum + traj_len
         datasets_reg.append(datasets_temp)
     return datasets_reg,min_max_scaler
 
 ## normalize length
-def normalize_length(datasets,task_name_list):
+def normalize_length(datasets):
+    global TASK_NAME_LIST
     # resample the datasets
     datasets_norm = []
     for task_idx, task_data in enumerate(datasets):
-        print('Resampling data of task: ' + task_name_list[task_idx])
+        print('Resampling data of task: ' + TASK_NAME_LIST[task_idx])
         demo_norm_temp = []
         for demo_data in task_data:
             time_stamp = demo_data['stamp']
@@ -218,29 +226,37 @@ def normalize_length(datasets,task_name_list):
 
 def main():
     ## read raw data
-    datasets_raw, task_name_list = load_data()
+    datasets_raw = load_data()
 
     ## select feature
     h_feature_index, r_feature_index, h_dim, r_dim = get_feature_index()
     datasets_raw_select = select_data(datasets_raw,h_feature_index, r_feature_index)
 
     ## filtered select data
-    datasets_filtered = filter_data(datasets_raw_select,task_name_list)
+    datasets_filtered = filter_data(datasets_raw_select)
 
     ## regulize to 0-1, and normalize length
-    datasets_reg,min_max_scaler = regulize_channel(datasets_filtered, task_name_list,h_dim+r_dim)
-    datasets_norm = normalize_length(datasets_reg, task_name_list)
+    datasets_reg,min_max_scaler = regulize_channel(datasets_filtered,h_dim,r_dim)
+    datasets_norm = normalize_length(datasets_reg)
 
     ## save all the datasets
     print('Saving the datasets as pkl ...')
-    joblib.dump(task_name_list, os.path.join(datasets_path, 'pkl/task_name_list.pkl'))
-    joblib.dump(datasets_raw, os.path.join(datasets_path, 'pkl/datasets_raw.pkl'))
-    joblib.dump(datasets_raw_select, os.path.join(datasets_path, 'pkl/datasets_raw_select.pkl'))
-    joblib.dump(datasets_filtered, os.path.join(datasets_path, 'pkl/datasets_filtered.pkl'))
-    joblib.dump(datasets_reg, os.path.join(datasets_path, 'pkl/datasets_reg.pkl'))
-    joblib.dump(min_max_scaler, os.path.join(datasets_path, 'pkl/min_max_scaler.pkl'))
-    joblib.dump(datasets_norm, os.path.join(datasets_path, 'pkl/datasets_norm.pkl'))
+    # joblib.dump(TASK_NAME_LIST, os.path.join(datasets_path, 'pkl/task_name_list.pkl'))
+    # joblib.dump(datasets_raw, os.path.join(datasets_path, 'pkl/datasets_raw.pkl'))
+    # joblib.dump(datasets_raw_select, os.path.join(datasets_path, 'pkl/datasets_raw_select.pkl'))
+    # joblib.dump(datasets_filtered, os.path.join(datasets_path, 'pkl/datasets_filtered.pkl'))
+    # joblib.dump(datasets_reg, os.path.join(datasets_path, 'pkl/datasets_reg.pkl'))
+    # joblib.dump(min_max_scaler, os.path.join(datasets_path, 'pkl/min_max_scaler.pkl'))
+    # joblib.dump(datasets_norm, os.path.join(datasets_path, 'pkl/datasets_norm.pkl'))
 
+
+    pickle.dump(TASK_NAME_LIST, open(os.path.join(datasets_path, 'pkl/task_name_list.pkl'),"wb"))
+    pickle.dump(datasets_raw, open(os.path.join(datasets_path, 'pkl/datasets_raw.pkl'),"wb"))
+    pickle.dump(datasets_raw_select, open(os.path.join(datasets_path, 'pkl/datasets_raw_select.pkl'),"wb"))
+    pickle.dump(datasets_filtered, open(os.path.join(datasets_path, 'pkl/datasets_filtered.pkl'),"wb"))
+    pickle.dump(datasets_reg, open(os.path.join(datasets_path, 'pkl/datasets_reg.pkl'),"wb"))
+    pickle.dump(min_max_scaler, open(os.path.join(datasets_path, 'pkl/min_max_scaler.pkl'),"wb"))
+    pickle.dump(datasets_norm, open(os.path.join(datasets_path, 'pkl/datasets_norm.pkl'),"wb"))
     # # the finished reminder
     print('Loaded, filtered, normalized, preprocessed and saved the datasets successfully!!!')
 

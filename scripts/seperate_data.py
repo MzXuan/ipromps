@@ -2,20 +2,17 @@
 import os
 import ConfigParser
 from sklearn.externals import joblib
+import pickle
 
 # the current file path
 FILE_PATH = os.path.dirname(__file__)
-SELECT_CLASS = []
 DATASETS_PATH = ''
 
 
 def get_feature_index(csv_path='../cfg/models.cfg'):
-    global SELECT_CLASS
     # read models params
     cp_models = ConfigParser.SafeConfigParser()
     cp_models.read(os.path.join(FILE_PATH, csv_path))
-    SELECT_CLASS = cp_models.get('datasets', 'class_index')
-    SELECT_CLASS = map(int, SELECT_CLASS.split(','))
     emg = cp_models.get("csv_parse",'emg')
     imu = cp_models.get("csv_parse",'imu')
     elbow_position = cp_models.get("csv_parse",'elbow_position')
@@ -40,7 +37,7 @@ def get_feature_index(csv_path='../cfg/models.cfg'):
     
 
 ##seperate to train, val, test1
-def split(data, train_part=0.7, val_part=0.8, test_part=1.0):
+def split(data, train_part=0.7, val_part=0.9, test_part=1.0):
     train_data = []
     val_data = []
     test_data = []
@@ -63,16 +60,26 @@ def main():
     DATASETS_PATH = os.path.join(FILE_PATH, cp_models.get('datasets', 'path'))
 
     # read raw and norm data
-    datasets_norm = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_norm.pkl'))
-    datasets_raw = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_raw.pkl'))
+    # datasets_norm = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_norm.pkl'))
+    # datasets_raw = joblib.load(os.path.join(DATASETS_PATH, 'pkl/datasets_raw_select.pkl'))
+
+    datasets_norm = pickle.load(open(os.path.join(DATASETS_PATH, 'pkl/datasets_norm.pkl'),"rb"))
+    datasets_raw = pickle.load(open(os.path.join(DATASETS_PATH, 'pkl/datasets_raw_select.pkl'),"rb"))
+
 
     #split data to different dataset
     train_data_norm, _, _ = split(datasets_norm)
     _, _, test_data_raw = split(datasets_raw)
 
     ##save for future use
-    joblib.dump(train_data_norm, os.path.join(DATASETS_PATH, 'pkl/train_data_norm.pkl'))
-    joblib.dump(test_data_raw, os.path.join(DATASETS_PATH, 'pkl/test_data_raw.pkl'))
+    # joblib.dump(train_data_norm, os.path.join(DATASETS_PATH, 'pkl/train_data_norm.pkl'))
+    # joblib.dump(test_data_raw, os.path.join(DATASETS_PATH, 'pkl/test_data_raw.pkl'))
+
+    pickle.dump(train_data_norm, open(os.path.join(DATASETS_PATH, 'pkl/train_data_norm.pkl'),"wb"))
+    pickle.dump(test_data_raw, open(os.path.join(DATASETS_PATH, 'pkl/test_data_raw.pkl'),"wb"))
+
+
+    print('successfully separate data')
 
 if __name__ == '__main__':
     main()

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.externals import joblib
 import ConfigParser
+import pickle
 
 # read conf file
 file_path = os.path.dirname(__file__)
@@ -14,7 +15,7 @@ cp.read(os.path.join(file_path, '../cfg/models.cfg'))
 datasets_path = os.path.join(file_path, cp.get('datasets', 'path'))
 datasets_pkl_path = os.path.join(datasets_path, 'pkl')
 min_max_scaler_path = os.path.join(datasets_pkl_path, 'min_max_scaler.pkl')
-min_max_scaler = joblib.load(min_max_scaler_path)
+min_max_scaler = pickle.load(open(min_max_scaler_path,"rb"))
 
 def main(h_dim=3,r_dim=3):
     csv_path = os.path.join(datasets_path, 'info/noise/multiModal_states.csv')
@@ -48,7 +49,7 @@ def main(h_dim=3,r_dim=3):
                 noise_cov[i][j]=0
 
     # save it in pkl
-    joblib.dump(noise_cov, os.path.join(datasets_path, 'pkl/noise_cov.pkl'))
+    pickle.dump(noise_cov, open(os.path.join(datasets_path, 'pkl/noise_cov.pkl'),"wb"))
     print('Saved the noise covariance matrix successfully!')
 
 
